@@ -224,11 +224,35 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
       flex-wrap: wrap;
       gap: 0.75rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
     }
+    .table-header:hover { background: rgba(255,255,255,0.03); }
     .table-header h3 { font-size: 0.9rem; font-weight: 700; }
+
+    .table-header-left { display: flex; align-items: center; gap: 0.75rem; }
+
+    .chevron {
+      font-size: 0.75rem;
+      color: var(--muted);
+      transition: transform 0.25s ease;
+      flex-shrink: 0;
+    }
+    .table-card.collapsed .chevron { transform: rotate(-90deg); }
+
+    .table-body {
+      max-height: 3000px;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+      border-top: 1px solid var(--border);
+    }
+    .table-card.collapsed .table-body {
+      max-height: 0;
+      border-top: none;
+    }
 
     .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 
@@ -505,34 +529,75 @@
     </div>
 
     <!-- Overdue Table -->
+    <!-- Overdue Table -->
     <div class="table-card" id="overdueSection">
-      <div class="table-header">
-        <h3>🔴 Demandas Atrasadas</h3>
-        <span class="results-count" id="overdueCount"></span>
+      <div class="table-header" onclick="toggleTable('overdueSection')">
+        <div class="table-header-left">
+          <h3>🔴 Demandas Atrasadas</h3>
+          <span class="results-count" id="overdueCount"></span>
+        </div>
+        <span class="chevron">▼</span>
       </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Tarefa</th>
-              <th>Board</th>
-              <th>Responsável</th>
-              <th>Cliente</th>
-              <th onclick="sortOverdue('date')">Prazo ↕</th>
-              <th onclick="sortOverdue('days')">Atraso ↕</th>
-              <th>Prioridade</th>
-            </tr>
-          </thead>
-          <tbody id="overdueBody"></tbody>
-        </table>
+      <div class="table-body">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarefa</th>
+                <th>Board</th>
+                <th>Responsável</th>
+                <th>Cliente</th>
+                <th onclick="sortOverdue('date')">Prazo ↕</th>
+                <th onclick="sortOverdue('days')">Atraso ↕</th>
+                <th>Prioridade</th>
+              </tr>
+            </thead>
+            <tbody id="overdueBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Table -->
+    <div class="table-card" id="pendingSection">
+      <div class="table-header" onclick="toggleTable('pendingSection')">
+        <div class="table-header-left">
+          <h3>🔵 Demandas Pendentes</h3>
+          <span class="results-count" id="pendingCount"></span>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="table-body">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarefa</th>
+                <th>Board</th>
+                <th>Responsável</th>
+                <th>Cliente</th>
+                <th>Prazo</th>
+                <th>Status</th>
+                <th>Prioridade</th>
+              </tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
     <!-- All Demands Table -->
-    <div class="table-card">
-      <div class="table-header">
-        <h3>📋 Todas as Demandas</h3>
-        <div class="filters">
+    <div class="table-card" id="mainSection">
+      <div class="table-header" onclick="toggleTable('mainSection')">
+        <div class="table-header-left">
+          <h3>📋 Todas as Demandas</h3>
+          <span class="results-count" id="mainCount"></span>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+      <div class="table-body">
+        <div class="filters" style="padding:0.75rem 1.25rem; border-bottom:1px solid var(--border);" onclick="event.stopPropagation()">
           <input type="text" id="searchInput" class="search-input"
                  placeholder="🔍 Buscar tarefa, responsável..." oninput="renderMainTable()">
           <select id="fBoard"  class="filter-select" onchange="renderMainTable()">
@@ -563,24 +628,23 @@
             Até <input type="date" id="fDateTo" class="filter-select" onchange="renderMainTable()" style="padding:0.3rem 0.5rem;">
           </label>
           <button class="btn btn-ghost" onclick="clearDateFilter()" style="padding:0.3rem 0.65rem;font-size:0.75rem;">✕ Datas</button>
-          <span class="results-count" id="mainCount"></span>
         </div>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Tarefa</th>
-              <th>Board</th>
-              <th>Responsável</th>
-              <th>Cliente</th>
-              <th>Prazo</th>
-              <th>Status</th>
-              <th>Prioridade</th>
-            </tr>
-          </thead>
-          <tbody id="mainBody"></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarefa</th>
+                <th>Board</th>
+                <th>Responsável</th>
+                <th>Cliente</th>
+                <th>Prazo</th>
+                <th>Status</th>
+                <th>Prioridade</th>
+              </tr>
+            </thead>
+            <tbody id="mainBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -968,6 +1032,31 @@ function populateFilters(items) {
   [...prios].sort().forEach(p => prSel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`);
 }
 
+function toggleTable(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+function renderPendingTable(items) {
+  const pending = items.filter(i => i.cls === 'andamento' || i.cls === 'hoje' || i.cls === 'sem_prazo');
+  pending.sort((a, b) => (a.date || '9999').localeCompare(b.date || '9999'));
+
+  document.getElementById('pendingCount').textContent =
+    `${pending.length} demanda${pending.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('pendingBody').innerHTML = pending.length
+    ? pending.map(it => `
+      <tr>
+        <td><span class="task-name" title="${esc(it.name)}">${esc(it.name)}</span></td>
+        <td><span class="board-chip">${it.icon} ${it.board}</span></td>
+        <td style="white-space:nowrap;">${esc(it.person)}</td>
+        <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(it.client)}">${esc(it.client)}</td>
+        <td style="white-space:nowrap;">${fmtDate(it.date)}</td>
+        <td>${statusBadge(it.cls)}</td>
+        <td>${priorityBadge(it.priority)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty-state">Nenhuma demanda pendente.</div></td></tr>`;
+}
+
 function clearDateFilter() {
   document.getElementById('fDateFrom').value = '';
   document.getElementById('fDateTo').value   = '';
@@ -1037,6 +1126,7 @@ async function loadAllData() {
     renderCards(allItems);
     renderCharts(allItems);
     renderOverdueTable(allItems);
+    renderPendingTable(allItems);
     populateFilters(allItems);
     renderMainTable();
 
