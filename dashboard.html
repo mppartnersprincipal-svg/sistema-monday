@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>M|P Assessoria — Dashboard de Demandas</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:           #0f172a;
+      --surface:      #1e293b;
+      --surface2:     #273549;
+      --border:       #334155;
+      --text:         #f1f5f9;
+      --muted:        #94a3b8;
+      --purple:       #8b5cf6;
+      --purple-dim:   rgba(139,92,246,0.12);
+      --green:        #22c55e;
+      --yellow:       #f59e0b;
+      --red:          #ef4444;
+      --blue:         #3b82f6;
+      --orange:       #f97316;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── HEADER ─────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, #1a1040 0%, #1e293b 60%);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+
+    .logo {
+      font-size: 1.6rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #a78bfa, #60a5fa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-titles { line-height: 1.3; }
+    .header-titles strong { font-size: 0.95rem; }
+    .header-titles span { font-size: 0.75rem; color: var(--muted); display: block; }
+
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+
+    .last-updated {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface2);
+      padding: 0.3rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+    }
+
+    .auto-badge {
+      font-size: 0.7rem;
+      color: var(--green);
+      background: rgba(34,197,94,0.1);
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(34,197,94,0.25);
+    }
+
+    .btn {
+      padding: 0.45rem 1rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--purple); color: white; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── MAIN ───────────────────────────────── */
+    .main { padding: 1.5rem 2rem; max-width: 1700px; margin: 0 auto; }
+
+    /* ── LOADING ────────────────────────────── */
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 65vh;
+      gap: 1rem;
+    }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── ERROR ──────────────────────────────── */
+    .error-banner {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: #fca5a5;
+      margin-bottom: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    /* ── SUMMARY CARDS ──────────────────────── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem 1.4rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 14px 14px 0 0;
+    }
+    .card:hover { border-color: #475569; }
+
+    .card-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+      font-weight: 600;
+    }
+    .card-value {
+      font-size: 2.6rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .card-sub { font-size: 0.72rem; color: var(--muted); }
+
+    .card.total   ::before { background: var(--blue); }
+    .card.atrasado::before { background: var(--red); }
+    .card.hoje    ::before { background: var(--yellow); }
+    .card.andamento::before { background: var(--purple); }
+    .card.concluida::before { background: var(--green); }
+
+    .card.total    .card-value { color: var(--blue); }
+    .card.atrasado .card-value { color: var(--red); }
+    .card.hoje     .card-value { color: var(--yellow); }
+    .card.andamento .card-value { color: var(--purple); }
+    .card.concluida .card-value { color: var(--green); }
+
+    /* ── CHARTS ─────────────────────────────── */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.9fr 0.9fr;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .chart-card h3 {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .chart-wrapper { position: relative; height: 230px; }
+
+    /* ── TABLE CARD ─────────────────────────── */
+    .table-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+
+    .table-header {
+      padding: 0.9rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .table-header h3 { font-size: 0.9rem; font-weight: 700; }
+
+    .filters { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+    .filter-select, .search-input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 0.35rem 0.7rem;
+      font-size: 0.78rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filter-select:focus, .search-input:focus { border-color: var(--purple); }
+
+    .results-count { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── TABLE ──────────────────────────────── */
+    .table-scroll { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    thead th {
+      padding: 0.65rem 1.1rem;
+      text-align: left;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sorted { color: var(--purple); }
+
+    tbody td {
+      padding: 0.65rem 1.1rem;
+      font-size: 0.83rem;
+      border-bottom: 1px solid rgba(51,65,85,0.4);
+      vertical-align: middle;
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(139,92,246,0.04); }
+
+    .task-name {
+      font-weight: 500;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── BADGES ─────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .badge-red    { background: rgba(239,68,68,0.15);   color: #fca5a5; }
+    .badge-orange { background: rgba(249,115,22,0.15);  color: #fdba74; }
+    .badge-yellow { background: rgba(245,158,11,0.15);  color: #fcd34d; }
+    .badge-green  { background: rgba(34,197,94,0.15);   color: #86efac; }
+    .badge-blue   { background: rgba(59,130,246,0.15);  color: #93c5fd; }
+    .badge-purple { background: rgba(139,92,246,0.15);  color: #c4b5fd; }
+    .badge-gray   { background: rgba(148,163,184,0.1);  color: #94a3b8; }
+
+    .board-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .days-chip {
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 0.2rem 0.55rem;
+    }
+
+    /* ── MODAL ──────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 2rem;
+      width: 500px;
+      max-width: 92vw;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+    }
+    .modal h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+    .modal .modal-desc { color: var(--muted); font-size: 0.83rem; margin-bottom: 1.5rem; line-height: 1.5; }
+
+    .form-label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.35rem; font-weight: 600; }
+    .form-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 0.65rem 0.9rem;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--purple); }
+
+    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem; }
+
+    .modal-hint {
+      margin-top: 1.1rem;
+      padding: 0.75rem;
+      background: var(--surface2);
+      border-radius: 8px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* ── EMPTY STATE ────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* ── FOOTER ─────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 1.5rem 2rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: 1rem;
+    }
+
+    /* ── UTILS ──────────────────────────────── */
+    .hidden { display: none !important; }
+    .text-muted { color: var(--muted); }
+
+    /* ── RESPONSIVE ─────────────────────────── */
+    @media (max-width: 1300px) {
+      .charts-grid { grid-template-columns: 1fr 1fr; }
+      .charts-grid > :first-child { grid-column: 1 / -1; }
+    }
+    @media (max-width: 900px) {
+      .main { padding: 1rem; }
+      .header { padding: 0.75rem 1rem; }
+      .summary-grid { grid-template-columns: repeat(3, 1fr); }
+      .charts-grid { grid-template-columns: 1fr; }
+      .charts-grid > :first-child { grid-column: auto; }
+    }
+    @media (max-width: 580px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── SETTINGS MODAL ─────────────────────────────────── -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>⚙️ Configurar Token da API</h2>
+    <p class="modal-desc">
+      Insira o token de acesso da API do Monday.com.
+      Ele será salvo no navegador e reutilizado automaticamente.
+    </p>
+    <div style="margin-bottom: 1rem;">
+      <label class="form-label">Monday API Token</label>
+      <input type="password" id="tokenInput" class="form-input" placeholder="eyJhbGciOiJIUzI1NiJ9...">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveToken()">✓ Salvar e Carregar</button>
+    </div>
+    <div class="modal-hint">
+      💡 <strong>Como obter o token:</strong> Monday.com → clique no seu avatar →
+      <strong>Developers</strong> → <strong>My Access Tokens</strong> → copie o Personal Token.
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ──────────────────────────────────────────── -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo">M|P</div>
+    <div class="header-titles">
+      <strong>Dashboard de Demandas</strong>
+      <span>M|P Assessoria — Monitoramento em tempo real</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-updated" id="lastUpdated">Aguardando dados...</span>
+    <button class="btn btn-primary" onclick="loadAllData()" id="refreshBtn">↻ Atualizar</button>
+    <button class="btn btn-ghost" onclick="showSettings()" title="Configurações">⚙️</button>
+  </div>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────── -->
+<main class="main" id="mainContent">
+
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <span class="loading-text">Buscando dados do Monday.com...</span>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+
+    <div id="errorBanner" class="error-banner hidden"></div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="card total">
+        <div class="card-label">Total em Aberto</div>
+        <div class="card-value" id="cardTotal">—</div>
+        <div class="card-sub">demandas ativas</div>
+      </div>
+      <div class="card atrasado">
+        <div class="card-label">🔴 Atrasadas</div>
+        <div class="card-value" id="cardAtrasadas">—</div>
+        <div class="card-sub">prazo vencido</div>
+      </div>
+      <div class="card hoje">
+        <div class="card-label">🟡 Vence Hoje</div>
+        <div class="card-value" id="cardHoje">—</div>
+        <div class="card-sub">prazo hoje</div>
+      </div>
+      <div class="card andamento">
+        <div class="card-label">🔵 Em Andamento</div>
+        <div class="card-value" id="cardAndamento">—</div>
+        <div class="card-sub">no prazo</div>
+      </div>
+      <div class="card concluida">
+        <div class="card-label">🟢 Concluídas</div>
+        <div class="card-value" id="cardConcluidas">—</div>
+        <div class="card-sub">finalizadas</div>
+      </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Demandas por Board — Distribuição de Status</h3>
+        <div class="chart-wrapper"><canvas id="chartBoards"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Visão Geral de Status</h3>
+        <div class="chart-wrapper"><canvas id="chartStatus"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Carga por Responsável</h3>
+        <div class="chart-wrapper"><canvas id="chartPeople"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Overdue Table -->
+    <div class="table-card" id="overdueSection">
+      <div class="table-header">
+        <h3>🔴 Demandas Atrasadas</h3>
+        <span class="results-count" id="overdueCount"></span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Tarefa</th>
+              <th>Board</th>
+              <th>Responsável</th>
+              <th>Cliente</th>
+              <th onclick="sortOverdue('date')">Prazo ↕</th>
+              <th onclick="sortOverdue('days')">Atraso ↕</th>
+              <th>Prioridade</th>
+            </tr>
+          </thead>
+          <tbody id="overdueBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- All Demands Table -->
+    <div class="table-card">
+      <div class="table-header">
+        <h3>📋 Todas as Demandas</h3>
+        <div class="filters">
+          <input type="text" id="searchInput" class="search-input"
+                 placeholder="🔍 Buscar tarefa, responsável..." oninput="renderMainTable()">
+          <select id="fBoard"  class="filter-select" onchange="renderMainTable()">
+            <option value="">Todos os Boards</option>
+            <option value="Edição de Video">🎬 Edição de Video</option>
+            <option value="Design">🎨 Design</option>
+            <option value="Captação">📹 Captação</option>
+            <option value="Sagat">⚡ Sagat</option>
+          </select>
+          <select id="fStatus" class="filter-select" onchange="renderMainTable()">
+            <option value="">Todos os Status</option>
+            <option value="atrasada">🔴 Atrasadas</option>
+            <option value="hoje">🟡 Vence Hoje</option>
+            <option value="andamento">🔵 Em Andamento</option>
+            <option value="concluida">🟢 Concluídas</option>
+            <option value="sem_prazo">⚪ Sem Prazo</option>
+          </select>
+          <select id="fPriority" class="filter-select" onchange="renderMainTable()">
+            <option value="">Todas as Prioridades</option>
+          </select>
+          <select id="fPerson" class="filter-select" onchange="renderMainTable()">
+            <option value="">Todos os Responsáveis</option>
+          </select>
+          <span class="results-count" id="mainCount"></span>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Tarefa</th>
+              <th>Board</th>
+              <th>Responsável</th>
+              <th>Cliente</th>
+              <th>Prazo</th>
+              <th>Status</th>
+              <th>Prioridade</th>
+            </tr>
+          </thead>
+          <tbody id="mainBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /dashboard -->
+</main>
+
+<footer class="footer">
+  M|P Assessoria · Dashboard de Demandas · Clique em <strong>↻ Atualizar</strong> para buscar os dados mais recentes
+</footer>
+
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────
+//  CONFIGURAÇÃO DOS BOARDS
+// ─────────────────────────────────────────────────────────
+const BOARDS = [
+  {
+    id: '18400184761', name: 'Edição de Video', icon: '🎬',
+    personCol: 'person',
+    dateCol:   'date_mm0kgd5w',
+    statusCol: 'color_mm0ky795',
+    priorityCol:'color_mm0kp8d1',
+    clientCol: 'dropdown_mm0q4v0r'
+  },
+  {
+    id: '18400200544', name: 'Design', icon: '🎨',
+    personCol: 'person',
+    dateCol:   'date_mm0kgd5w',
+    statusCol: 'color_mm0ky795',
+    priorityCol:'color_mm0kp8d1',
+    clientCol: 'dropdown_mm0q6md5'
+  },
+  {
+    id: '18400200854', name: 'Captação', icon: '📹',
+    personCol: 'person',
+    dateCol:   'date_mm0kgd5w',
+    statusCol: 'color_mm0ky795',
+    priorityCol:'color_mm0kp8d1',
+    clientCol: 'dropdown_mm0q8ye4'
+  },
+  {
+    id: '18400199153', name: 'Sagat', icon: '⚡',
+    personCol: 'multiple_person_mm0x2jp5',
+    dateCol:   'date_mm0k9daq',
+    statusCol: 'color_mm0k9rcw',
+    priorityCol:'color_mm0kr1a4',
+    clientCol: 'dropdown_mm0qj8e9'
+  }
+];
+
+// ─────────────────────────────────────────────────────────
+//  ESTADO GLOBAL
+// ─────────────────────────────────────────────────────────
+let allItems   = [];
+let charts     = {};
+let overdueAsc = false;
+
+// ─────────────────────────────────────────────────────────
+//  API MONDAY
+// ─────────────────────────────────────────────────────────
+function getToken() { return localStorage.getItem('mp_monday_token') || ''; }
+
+async function gql(query, variables = {}) {
+  const resp = await fetch('https://api.monday.com/v2', {
+    method: 'POST',
+    headers: {
+      Authorization: getToken(),
+      'Content-Type': 'application/json',
+      'API-Version': '2024-01'
+    },
+    body: JSON.stringify({ query, variables })
+  });
+
+  if (!resp.ok) throw new Error(`Erro HTTP ${resp.status} — verifique o token ou a conexão.`);
+  const json = await resp.json();
+  if (json.errors?.length) throw new Error(json.errors[0].message);
+  return json.data;
+}
+
+async function fetchBoardItems(boardId) {
+  const Q = `
+    query ($id:[ID!], $cur:String) {
+      boards(ids:$id) {
+        items_page(limit:500, cursor:$cur) {
+          cursor
+          items {
+            id name
+            group { id title }
+            column_values { id text }
+          }
+        }
+      }
+    }`;
+
+  let items = [], cursor = null;
+  do {
+    const data = await gql(Q, { id: [boardId], cur: cursor });
+    const page = data.boards[0].items_page;
+    items  = items.concat(page.items);
+    cursor = page.cursor || null;
+  } while (cursor);
+
+  return items;
+}
+
+// ─────────────────────────────────────────────────────────
+//  PROCESSAMENTO DE DADOS
+// ─────────────────────────────────────────────────────────
+function col(colValues, id) {
+  return (colValues.find(c => c.id === id)?.text || '').trim();
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const d = new Date(str + 'T00:00:00');
+  return isNaN(d) ? null : d;
+}
+
+function today0() {
+  const t = new Date(); t.setHours(0,0,0,0); return t;
+}
+
+function classifyItem(item) {
+  const grp    = (item.group || '').toLowerCase();
+  const status = (item.status || '').toLowerCase();
+
+  // Done?
+  if (grp.includes('finalizada') || status === 'feito' || status === 'done!') return 'concluida';
+
+  if (!item.date) return 'sem_prazo';
+
+  const deadline = parseDate(item.date);
+  if (!deadline) return 'sem_prazo';
+
+  const diff = Math.floor((deadline - today0()) / 86400000);
+  if (diff < 0) return 'atrasada';
+  if (diff === 0) return 'hoje';
+  return 'andamento';
+}
+
+function daysLate(dateStr) {
+  if (!dateStr) return 0;
+  const d = parseDate(dateStr);
+  return d ? Math.max(0, Math.floor((today0() - d) / 86400000)) : 0;
+}
+
+function processItems(raw, cfg) {
+  return raw.map(item => {
+    const cv   = item.column_values;
+    const date = col(cv, cfg.dateCol);
+    const obj  = {
+      id:       item.id,
+      name:     item.name,
+      board:    cfg.name,
+      icon:     cfg.icon,
+      group:    item.group.title,
+      person:   col(cv, cfg.personCol) || '—',
+      date,
+      status:   col(cv, cfg.statusCol),
+      priority: col(cv, cfg.priorityCol),
+      client:   col(cv, cfg.clientCol) || '—',
+    };
+    obj.cls      = classifyItem(obj);
+    obj.daysLate = daysLate(date);
+    return obj;
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+//  GRÁFICOS
+// ─────────────────────────────────────────────────────────
+const STATUS_COLORS = {
+  atrasada: '#ef4444', hoje: '#f59e0b',
+  andamento: '#3b82f6', sem_prazo: '#475569', concluida: '#22c55e'
+};
+const STATUS_LABELS = {
+  atrasada: 'Atrasada', hoje: 'Vence Hoje',
+  andamento: 'Em Andamento', sem_prazo: 'Sem Prazo', concluida: 'Concluída'
+};
+const STATUS_KEYS = ['atrasada', 'hoje', 'andamento', 'sem_prazo', 'concluida'];
+
+const CHART_OPTS = {
+  gridColor: 'rgba(51,65,85,0.55)',
+  tickColor: '#64748b',
+  legendColor: '#94a3b8'
+};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+function renderCharts(items) {
+  destroyCharts();
+
+  const boardNames = BOARDS.map(b => b.name);
+
+  // ── Chart 1: Stacked bar — boards × status ──
+  const datasets = STATUS_KEYS.map(k => ({
+    label: STATUS_LABELS[k],
+    data: boardNames.map(bn => items.filter(i => i.board === bn && i.cls === k).length),
+    backgroundColor: STATUS_COLORS[k],
+    borderRadius: 5
+  }));
+
+  charts.boards = new Chart(document.getElementById('chartBoards'), {
+    type: 'bar',
+    data: {
+      labels: boardNames.map(n => {
+        const b = BOARDS.find(x => x.name === n);
+        return b ? `${b.icon} ${n}` : n;
+      }),
+      datasets
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: CHART_OPTS.legendColor, font: { size: 11 }, boxWidth: 12, padding: 14 } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { color: CHART_OPTS.tickColor }, grid: { color: CHART_OPTS.gridColor } },
+        y: { stacked: true, ticks: { color: CHART_OPTS.tickColor, stepSize: 1 }, grid: { color: CHART_OPTS.gridColor } }
+      }
+    }
+  });
+
+  // ── Chart 2: Doughnut — status distribution (active only) ──
+  const active = items.filter(i => i.cls !== 'concluida');
+  const dKeys  = ['atrasada', 'hoje', 'andamento', 'sem_prazo'];
+
+  charts.status = new Chart(document.getElementById('chartStatus'), {
+    type: 'doughnut',
+    data: {
+      labels: dKeys.map(k => STATUS_LABELS[k]),
+      datasets: [{
+        data: dKeys.map(k => active.filter(i => i.cls === k).length),
+        backgroundColor: dKeys.map(k => STATUS_COLORS[k]),
+        borderWidth: 0, hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '62%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: CHART_OPTS.legendColor, font: { size: 11 }, boxWidth: 12, padding: 14 }
+        }
+      }
+    }
+  });
+
+  // ── Chart 3: Horizontal bar — workload per person ──
+  const personMap = {};
+  items.filter(i => i.cls !== 'concluida').forEach(item => {
+    item.person.split(',').map(n => n.trim())
+      .filter(n => n && n !== '—')
+      .forEach(name => { personMap[name] = (personMap[name] || 0) + 1; });
+  });
+
+  const sorted = Object.entries(personMap).sort((a,b) => b[1]-a[1]).slice(0,10);
+  const bgColors = sorted.map(([,c],i) => {
+    const palette = ['#8b5cf6','#3b82f6','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#f97316','#a78bfa','#34d399'];
+    return palette[i % palette.length];
+  });
+
+  charts.people = new Chart(document.getElementById('chartPeople'), {
+    type: 'bar',
+    data: {
+      labels: sorted.map(([n]) => n),
+      datasets: [{
+        label: 'Demandas',
+        data: sorted.map(([,c]) => c),
+        backgroundColor: bgColors,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: CHART_OPTS.tickColor, stepSize: 1 }, grid: { color: CHART_OPTS.gridColor } },
+        y: { ticks: { color: CHART_OPTS.tickColor, font: { size: 12 } }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────
+//  HELPERS DE BADGE
+// ─────────────────────────────────────────────────────────
+function priorityBadge(p) {
+  const lower = (p || '').toLowerCase();
+  if (lower.includes('urgente')) return `<span class="badge badge-red">${esc(p)}</span>`;
+  if (lower.includes('alta'))    return `<span class="badge badge-orange">${esc(p)}</span>`;
+  if (lower.includes('média') || lower.includes('media')) return `<span class="badge badge-yellow">${esc(p)}</span>`;
+  if (lower.includes('normal'))  return `<span class="badge badge-green">${esc(p)}</span>`;
+  if (lower.includes('baixa'))   return `<span class="badge badge-blue">${esc(p)}</span>`;
+  return `<span class="badge badge-gray">${esc(p || '—')}</span>`;
+}
+
+function statusBadge(cls) {
+  const MAP = {
+    atrasada:  ['badge-red',    '🔴 Atrasada'],
+    hoje:      ['badge-yellow', '🟡 Vence Hoje'],
+    andamento: ['badge-blue',   '🔵 Em Andamento'],
+    concluida: ['badge-green',  '🟢 Concluída'],
+    sem_prazo: ['badge-gray',   '⚪ Sem Prazo']
+  };
+  const [klass, label] = MAP[cls] || ['badge-gray', cls];
+  return `<span class="badge ${klass}">${label}</span>`;
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  const [y,m,d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────
+//  SUMMARY CARDS
+// ─────────────────────────────────────────────────────────
+function renderCards(items) {
+  document.getElementById('cardTotal').textContent     = items.filter(i => i.cls !== 'concluida').length;
+  document.getElementById('cardAtrasadas').textContent = items.filter(i => i.cls === 'atrasada').length;
+  document.getElementById('cardHoje').textContent      = items.filter(i => i.cls === 'hoje').length;
+  document.getElementById('cardAndamento').textContent = items.filter(i => i.cls === 'andamento').length;
+  document.getElementById('cardConcluidas').textContent= items.filter(i => i.cls === 'concluida').length;
+}
+
+// ─────────────────────────────────────────────────────────
+//  TABELA DE ATRASADAS
+// ─────────────────────────────────────────────────────────
+let overdueSort = 'days'; // 'days' | 'date'
+
+function sortOverdue(by) { overdueSort = by; renderOverdueTable(allItems); }
+
+function renderOverdueTable(items) {
+  let overdue = items.filter(i => i.cls === 'atrasada');
+  if (overdueSort === 'days')  overdue.sort((a,b) => b.daysLate - a.daysLate);
+  if (overdueSort === 'date')  overdue.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  const section = document.getElementById('overdueSection');
+  section.classList.toggle('hidden', overdue.length === 0);
+
+  document.getElementById('overdueCount').textContent =
+    `${overdue.length} demanda${overdue.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('overdueBody').innerHTML = overdue.length
+    ? overdue.map(it => `
+      <tr>
+        <td><span class="task-name" title="${esc(it.name)}">${esc(it.name)}</span></td>
+        <td><span class="board-chip">${it.icon} ${it.board}</span></td>
+        <td>${esc(it.person)}</td>
+        <td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(it.client)}">${esc(it.client)}</td>
+        <td style="white-space:nowrap;">${fmtDate(it.date)}</td>
+        <td><span class="badge badge-red days-chip">-${it.daysLate}d</span></td>
+        <td>${priorityBadge(it.priority)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty-state">Nenhuma demanda atrasada 🎉</div></td></tr>`;
+}
+
+// ─────────────────────────────────────────────────────────
+//  TABELA PRINCIPAL
+// ─────────────────────────────────────────────────────────
+function populateFilters(items) {
+  // People
+  const people = new Set();
+  items.forEach(it => it.person.split(',').map(n=>n.trim()).filter(n=>n&&n!=='—').forEach(n=>people.add(n)));
+  const pSel = document.getElementById('fPerson');
+  pSel.innerHTML = '<option value="">Todos os Responsáveis</option>';
+  [...people].sort().forEach(n => pSel.innerHTML += `<option value="${esc(n)}">${esc(n)}</option>`);
+
+  // Priorities
+  const prios = new Set(items.map(it=>it.priority).filter(Boolean));
+  const prSel = document.getElementById('fPriority');
+  prSel.innerHTML = '<option value="">Todas as Prioridades</option>';
+  [...prios].sort().forEach(p => prSel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`);
+}
+
+function renderMainTable() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  const fb   = document.getElementById('fBoard').value;
+  const fs   = document.getElementById('fStatus').value;
+  const fp   = document.getElementById('fPerson').value;
+  const fpri = document.getElementById('fPriority').value;
+
+  const filtered = allItems.filter(it => {
+    if (q && !it.name.toLowerCase().includes(q) &&
+             !it.person.toLowerCase().includes(q) &&
+             !it.client.toLowerCase().includes(q)) return false;
+    if (fb   && it.board    !== fb)   return false;
+    if (fs   && it.cls      !== fs)   return false;
+    if (fp   && !it.person.includes(fp)) return false;
+    if (fpri && it.priority !== fpri) return false;
+    return true;
+  });
+
+  document.getElementById('mainCount').textContent = `${filtered.length} resultado${filtered.length!==1?'s':''}`;
+
+  document.getElementById('mainBody').innerHTML = filtered.length
+    ? filtered.map(it => `
+      <tr>
+        <td><span class="task-name" title="${esc(it.name)}">${esc(it.name)}</span></td>
+        <td><span class="board-chip">${it.icon} ${it.board}</span></td>
+        <td style="white-space:nowrap;">${esc(it.person)}</td>
+        <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${esc(it.client)}">${esc(it.client)}</td>
+        <td style="white-space:nowrap;">${fmtDate(it.date)}</td>
+        <td>${statusBadge(it.cls)}</td>
+        <td>${priorityBadge(it.priority)}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="7"><div class="empty-state">Nenhuma demanda encontrada com esses filtros.</div></td></tr>`;
+}
+
+// ─────────────────────────────────────────────────────────
+//  CARREGAMENTO PRINCIPAL
+// ─────────────────────────────────────────────────────────
+async function loadAllData() {
+  if (!getToken()) { showSettings(); return; }
+
+  const refreshBtn = document.getElementById('refreshBtn');
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = '↻ Carregando...';
+
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('errorBanner').classList.add('hidden');
+
+  try {
+    const results = await Promise.all(
+      BOARDS.map(cfg => fetchBoardItems(cfg.id).then(raw => processItems(raw, cfg)))
+    );
+
+    allItems = results.flat();
+
+    renderCards(allItems);
+    renderCharts(allItems);
+    renderOverdueTable(allItems);
+    populateFilters(allItems);
+    renderMainTable();
+
+    const now = new Date();
+    document.getElementById('lastUpdated').textContent =
+      `Atualizado: ${now.toLocaleDateString('pt-BR')} às ${now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+
+  } catch (err) {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    const banner = document.getElementById('errorBanner');
+    banner.textContent = `⚠️ Erro: ${err.message}`;
+    banner.classList.remove('hidden');
+    console.error(err);
+  } finally {
+    refreshBtn.disabled = false;
+    refreshBtn.textContent = '↻ Atualizar';
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────
+//  CONFIGURAÇÕES / TOKEN
+// ─────────────────────────────────────────────────────────
+function showSettings() {
+  document.getElementById('tokenInput').value = getToken();
+  document.getElementById('settingsModal').classList.remove('hidden');
+  document.getElementById('tokenInput').focus();
+}
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.add('hidden');
+}
+
+function saveToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { alert('Por favor, cole o seu token de API.'); return; }
+  localStorage.setItem('mp_monday_token', t);
+  closeSettings();
+  loadAllData();
+}
+
+// Fecha modal com ESC
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSettings();
+});
+
+// ─────────────────────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  if (!getToken()) {
+    document.getElementById('loading').classList.add('hidden');
+    showSettings();
+  } else {
+    loadAllData();
+  }
+});
+</script>
+</body>
+</html>
