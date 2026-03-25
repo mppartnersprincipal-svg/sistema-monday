@@ -554,6 +554,13 @@
           <select id="fPerson" class="filter-select" onchange="renderMainTable()">
             <option value="">Todos os Responsáveis</option>
           </select>
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.78rem;color:var(--muted);">
+            De <input type="date" id="fDateFrom" class="filter-select" onchange="renderMainTable()" style="padding:0.3rem 0.5rem;">
+          </label>
+          <label style="display:flex;align-items:center;gap:0.35rem;font-size:0.78rem;color:var(--muted);">
+            Até <input type="date" id="fDateTo" class="filter-select" onchange="renderMainTable()" style="padding:0.3rem 0.5rem;">
+          </label>
+          <button class="btn btn-ghost" onclick="clearDateFilter()" style="padding:0.3rem 0.65rem;font-size:0.75rem;">✕ Datas</button>
           <span class="results-count" id="mainCount"></span>
         </div>
       </div>
@@ -959,12 +966,21 @@ function populateFilters(items) {
   [...prios].sort().forEach(p => prSel.innerHTML += `<option value="${esc(p)}">${esc(p)}</option>`);
 }
 
+function clearDateFilter() {
+  document.getElementById('fDateFrom').value = '';
+  document.getElementById('fDateTo').value   = '';
+  renderMainTable();
+}
+
 function renderMainTable() {
   const q    = document.getElementById('searchInput').value.toLowerCase();
   const fb   = document.getElementById('fBoard').value;
   const fs   = document.getElementById('fStatus').value;
   const fp   = document.getElementById('fPerson').value;
   const fpri = document.getElementById('fPriority').value;
+
+  const fdFrom = document.getElementById('fDateFrom').value; // 'YYYY-MM-DD'
+  const fdTo   = document.getElementById('fDateTo').value;
 
   const filtered = allItems.filter(it => {
     if (q && !it.name.toLowerCase().includes(q) &&
@@ -974,6 +990,8 @@ function renderMainTable() {
     if (fs   && it.cls      !== fs)   return false;
     if (fp   && !it.person.includes(fp)) return false;
     if (fpri && it.priority !== fpri) return false;
+    if (fdFrom && (!it.date || it.date < fdFrom)) return false;
+    if (fdTo   && (!it.date || it.date > fdTo))   return false;
     return true;
   });
 
